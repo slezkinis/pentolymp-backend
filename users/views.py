@@ -2,12 +2,14 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from drf_spectacular.utils import extend_schema, OpenApiResponse
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, extend_schema_view
+
 
 from .models import User
 from .serializers import (
     UserSerializer, RegisterSerializer, LoginSerializer
 )
+
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -20,7 +22,9 @@ class RegisterView(generics.CreateAPIView):
         responses={
             201: UserSerializer(),
             400: OpenApiResponse(description="Validation error")
-        }
+        },
+        tags=["Auth"],
+        auth=[]
     )
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
@@ -29,7 +33,28 @@ class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = LoginSerializer
 
-
+    @extend_schema(
+        summary="Авторизация пользователя",
+        description="Получение acess/refresh токенов при авторизации",
+        responses={
+            200: OpenApiResponse(
+                Response({
+                    'access': "string",
+                    'refresh': "string",
+                    'user': UserSerializer()
+                }), examples=[
+                    OpenApiExample(name="Успешно", value={
+                        'access': "string",
+                        'refresh': "string",
+                        'user': {}
+                    })
+                ]
+            ),
+            400: OpenApiResponse(description="Validation error")
+        },
+        tags=["Auth"],
+        auth=[]
+    )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():

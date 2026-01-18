@@ -23,6 +23,12 @@ class User(AbstractUser):
         related_query_name='user',
     )
     
+    solved_tasks = models.ManyToManyField(
+        'tasks.Task',
+        verbose_name='Решённые задачи',
+        blank=True
+    )
+
     USERNAME_FIELD = 'username'
     
     def __str__(self):
