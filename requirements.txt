@@ -3,3 +3,4 @@ djangorestframework==3.16.1
 python-dotenv
 drf-spectacular
 djangorestframework-simplejwt
+django-tinymce
