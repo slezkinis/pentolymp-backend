@@ -1,13 +1,14 @@
 from rest_framework import generics, permissions
-from rest_framework.views import APIView, Response, status
+from rest_framework.serializers import BooleanField
+from rest_framework.views import APIView, Response
 from rest_framework.pagination import PageNumberPagination
 
 from django.shortcuts import get_object_or_404
 
-from .models import Task
-from .serializers import TaskSerializer
+from .models import Task, Subject, Topic
+from .serializers import TaskSerializer, CheckAnswerSerializer, SubjectSerializer, TopicSerializer
 
-from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiResponse, OpenApiParameter, OpenApiTypes
+from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiResponse, OpenApiParameter, OpenApiTypes, OpenApiExample
 
 
 @extend_schema_view(
@@ -37,6 +38,20 @@ from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiResp
                 required=False,
                 type=OpenApiTypes.INT
             ),
+            OpenApiParameter(
+                name="topic_id",
+                location=OpenApiParameter.QUERY,
+                description="ID темы",
+                required=False,
+                type=OpenApiTypes.INT
+            ),
+            OpenApiParameter(
+                name="subject_id",
+                location=OpenApiParameter.QUERY,
+                description="ID предмета",
+                required=False,
+                type=OpenApiTypes.INT
+            )
         ],
         responses={
             200: TaskSerializer(many=True),
@@ -56,6 +71,16 @@ class TasksView(generics.ListAPIView):
         
         name = self.request.query_params.get('name')
         difficulty_level = self.request.query_params.get('difficulty_level')
+        topic_id = self.request.query_params.get('topic_id')
+        subject_id = self.request.query_params.get('subject_id')
+
+        if subject_id:
+            subject = get_object_or_404(Subject, pk=subject_id)
+            queryset = queryset.filter(topic__subject=subject)
+
+        if topic_id:
+            topic = get_object_or_404(Topic, pk=topic_id)
+            queryset = queryset.filter(topic=topic)
 
         if name:
             queryset = queryset.filter(name__icontains=name)
@@ -84,6 +109,24 @@ class TasksView(generics.ListAPIView):
             400: OpenApiResponse(description="Validation error")
         },
         tags=["Tasks"]
+    ),
+    post=extend_schema(
+        summary="Проверка ответа",
+        description="Проверка ответа на задачу",
+        request=CheckAnswerSerializer(),
+        responses={
+            200: OpenApiResponse(
+                Response({
+                    "is_correct": BooleanField()
+                }), examples=[
+                    OpenApiExample(name="Успешно", value={
+                        "is_correct": True
+                    })
+                ]
+            ),
+            400: OpenApiResponse(description="Validation error")
+        },
+        tags=["Tasks"]
     )
 )
 class TaskView(APIView):
@@ -93,4 +136,64 @@ class TaskView(APIView):
     def get(self, request, pk):
         task = get_object_or_404(Task, pk=pk)
         serializer = self.serializer_class(task, context={'request': request})
+        return Response(serializer.data)
+    
+    def post(self, request, pk):
+        task = get_object_or_404(Task, pk=pk)
+        serializer = CheckAnswerSerializer(data=request.data)
+        if serializer.is_valid():
+            is_correct = serializer.check(task, request.data['answer'])
+            if is_correct:
+                request.user.solved_tasks.add(task)
+                request.user.save()
+            return Response({
+                "is_correct": is_correct
+            })
+        else:
+            return Response(serializer.errors, status=400)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        summary="Получение учебных предметов",
+        description="Получение учебных предметов",
+        responses={
+            200: TopicSerializer(many=True),
+            400: OpenApiResponse(description="Validation error")
+        },
+        tags=["Tasks"]
+    )
+)
+class SubjectsView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Subject.objects.all()
+    serializer_class = SubjectSerializer
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        summary="Получение тем учебного предмета",
+        description="Получение тем учебного предмета",
+        responses={
+            200: TopicSerializer(many=True),
+            400: OpenApiResponse(description="Validation error")
+        },
+        tags=["Tasks"]
+    )
+)
+class TopicsView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = TopicSerializer
+
+    def get_queryset(self):
+        return Topic.objects.filter(subject=self.kwargs['subject_id'])
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
