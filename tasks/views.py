@@ -6,7 +6,7 @@ from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
 
 from .models import Task, Subject, Topic
-from .serializers import TaskSerializer, CheckAnswerSerializer, SubjectSerializer, TopicSerializer
+from .serializers import TaskSerializer, CheckAnswerSerializer, SubjectSerializer, TopicSerializer, TipSerializer
 
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiResponse, OpenApiParameter, OpenApiTypes, OpenApiExample
 
@@ -151,6 +151,27 @@ class TaskView(APIView):
             })
         else:
             return Response(serializer.errors, status=400)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        summary="Получение подсказки",
+        description="Получение подсказки по id",
+        responses={
+            200: TipSerializer(),
+            400: OpenApiResponse(description="Validation error")
+        },
+        tags=["Tasks"]
+    )
+)
+class TipView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = TipSerializer
+
+    def get(self, request, pk):
+        task = get_object_or_404(Task, pk=pk)
+        serializer = self.serializer_class(task, context={'request': request})
+        return Response(serializer.data)
 
 
 @extend_schema_view(

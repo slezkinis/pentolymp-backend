@@ -14,6 +14,7 @@ class Task(models.Model):
     answer = models.CharField("Правильный ответ")
     topic = models.ForeignKey("Topic", on_delete=models.CASCADE, verbose_name="Тема", related_name="tasks")
     difficulty_level = models.CharField("Уровень сложности", choices=Difficulty_Level.choices)
+    tip = models.TextField("Подсказка", blank=True, null=True)
 
     def is_solved(self, user):
         return user.solved_tasks.filter(id=self.id).exists()
@@ -50,4 +51,3 @@ class Topic(models.Model):
     class Meta:
         verbose_name = "Тема"
         verbose_name_plural = "Темы"
-    
