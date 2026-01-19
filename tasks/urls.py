@@ -5,6 +5,7 @@ from . import views
 urlpatterns = [
     path("tasks/", views.TasksView.as_view(), name="tasks"),
     path("tasks/<int:pk>/", views.TaskView.as_view(), name="task"),
+    path("tasks/<int:pk>/tip/", views.TipView.as_view(), name="tip"),
     path("subjects/", views.SubjectsView.as_view(), name="subjects"),
     path("subjects/<int:subject_id>/topics/", views.TopicsView.as_view(), name="topics"),
 ]

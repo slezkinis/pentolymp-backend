@@ -37,3 +37,9 @@ class SubjectSerializer(ModelSerializer):
     class Meta:
         model = Subject
         fields = 'id', 'name'
+
+
+class TipSerializer(ModelSerializer):
+    class Meta:
+        model = Task
+        fields = 'id', 'tip'
