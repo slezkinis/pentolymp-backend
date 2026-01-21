@@ -4,3 +4,4 @@ python-dotenv
 drf-spectacular
 djangorestframework-simplejwt
 django-tinymce
+django-cors-headers
