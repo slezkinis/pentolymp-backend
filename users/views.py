@@ -67,3 +67,41 @@ class LoginView(APIView):
                 'user': user_serializer.data
             })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        summary="Получение информации о пользователе",
+        description="Получение информации о пользователе",
+        responses={
+            200: UserSerializer(),
+            400: OpenApiResponse(description="Validation error")
+        },
+        tags=["Auth"],
+    ),
+    put=extend_schema(
+        summary="Обновление информации о пользователе (обновление всех полей)",
+        description="Обновление информации о пользователе",
+        responses={
+            200: UserSerializer(),
+            400: OpenApiResponse(description="Validation error")
+        },
+        tags=["Auth"],
+    ),
+    patch=extend_schema(
+        summary="Обновление информации о пользователе (конкретные поля)",
+        description="Обновление информации о пользователе",
+        responses={
+            200: UserSerializer(),
+            400: OpenApiResponse(description="Validation error")
+        },
+        tags=["Auth"],
+    )
+)
+class UserView(generics.RetrieveUpdateAPIView):
+    queryset = User.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserSerializer
+
+    def get_object(self):
+        return self.request.user
