@@ -189,11 +189,17 @@ class SubjectsView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     queryset = Subject.objects.all()
     serializer_class = SubjectSerializer
+    pagination_class = PageNumberPagination
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
+
 
 
 @extend_schema_view(
@@ -210,11 +216,16 @@ class SubjectsView(generics.ListAPIView):
 class TopicsView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = TopicSerializer
+    pagination_class = PageNumberPagination
 
     def get_queryset(self):
         return Topic.objects.filter(subject=self.kwargs['subject_id'])
     
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
