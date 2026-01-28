@@ -4,10 +4,24 @@ from django.contrib.auth import authenticate
 from .models import User
 
 class UserSerializer(serializers.ModelSerializer):
+    rating = serializers.SerializerMethodField(method_name='get_rating')
+
+    def get_rating(self, obj):
+        rating = obj.rating
+        if rating:
+            return {
+                'score': rating.score,
+                'matches_played': rating.matches_played,
+                'matches_won': rating.matches_won,
+                'matches_lost': rating.matches_lost,
+                'matches_drawn': rating.matches_drawn
+            }
+        return {}
+    
     class Meta:
         model = User
-        fields = ['id', 'email', 'username']
-        read_only_fields = ['id']
+        fields = ['id', 'email', 'username', "rating"]
+        read_only_fields = ['id', "rating"]
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
