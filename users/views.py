@@ -2,12 +2,13 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+import rest_framework_simplejwt
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, extend_schema_view
 
 
 from .models import User
 from .serializers import (
-    UserSerializer, RegisterSerializer, LoginSerializer
+    UserSerializer, RegisterSerializer, LoginSerializer, RefreshSerializer
 )
 
 
@@ -66,6 +67,38 @@ class LoginView(APIView):
                 'refresh': str(refresh),
                 'user': user_serializer.data
             })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class RefreshTokenView(APIView):
+    permission_classes = [permissions.AllowAny]
+    serializer_class = RefreshSerializer
+
+    @extend_schema(
+        summary="Обновление токена доступа",
+        description="Передача refresh токена, получение нового токена доступа",
+        responses={
+            200: OpenApiResponse(
+                Response({'access': 'string'}), examples=[
+                    OpenApiExample(name="Успешно", value={'access': 'string'})
+                ]
+            ),
+            400: OpenApiResponse(description="Validation error")
+        },
+        tags=["Auth"],
+        auth=[]
+    )
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            try:
+                refresh_token = RefreshToken(serializer.validated_data['refresh'])
+                access_token = refresh_token.access_token
+                return Response({
+                    'access': str(access_token)
+                })
+            except rest_framework_simplejwt.exceptions.TokenError:
+                return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

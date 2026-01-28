@@ -23,6 +23,10 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'email', 'username', "rating"]
         read_only_fields = ['id', "rating"]
 
+
+class RefreshSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True, required=True, validators=[validate_password]
