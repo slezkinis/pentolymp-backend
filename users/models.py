@@ -1,8 +1,49 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
+class User(AbstractUser):
+    email = models.EmailField(unique=True, blank=False)
+    username = models.CharField(unique=True, blank=False, max_length=20)
+    
+    groups = models.ManyToManyField(
+        'auth.Group',
+        verbose_name='groups',
+        blank=True,
+        help_text='The groups this user belongs to.',
+        related_name='custom_user_set',
+        related_query_name='user',
+    )
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        verbose_name='user permissions',
+        blank=True,
+        help_text='Specific permissions for this user.',
+        related_name='custom_user_set',
+        related_query_name='user',
+    )
+    
+    solved_tasks = models.ManyToManyField(
+        'tasks.Task',
+        verbose_name='Решённые задачи',
+        blank=True
+    )
+    
+    USERNAME_FIELD = 'username'
+    
+    def __str__(self):
+        return self.email
+    
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        
+        # Создаем рейтинг только для нового пользователя
+        if is_new:
+            Rating.objects.create(user=self)
+
+
 class Rating(models.Model):
-    user = models.OneToOneField('User', on_delete=models.CASCADE, related_name='rating')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='rating')
     score = models.IntegerField('Рейтинг', default=1000)
     matches_played = models.IntegerField('Сыграно матчей', default=0)
     matches_won = models.IntegerField('Побед', default=0)
@@ -38,41 +79,6 @@ class Rating(models.Model):
     def __str__(self):
         return f"{self.user.username}: {self.score}"
 
-
-class User(AbstractUser):
-    email = models.EmailField(unique=True, blank=False)
-    username = models.CharField(unique=True, blank=False, max_length=20)
-    
-    groups = models.ManyToManyField(
-        'auth.Group',
-        verbose_name='groups',
-        blank=True,
-        help_text='The groups this user belongs to.',
-        related_name='custom_user_set',
-        related_query_name='user',
-    )
-    user_permissions = models.ManyToManyField(
-        'auth.Permission',
-        verbose_name='user permissions',
-        blank=True,
-        help_text='Specific permissions for this user.',
-        related_name='custom_user_set',
-        related_query_name='user',
-    )
-    
-    solved_tasks = models.ManyToManyField(
-        'tasks.Task',
-        verbose_name='Решённые задачи',
-        blank=True
-    )
-    
-    USERNAME_FIELD = 'username'
-    
-    def __str__(self):
-        return self.email
-    
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        if not self.rating:
-            self.rating = Rating(user=self)
-            self.rating.save()
+    class Meta:
+        verbose_name = 'Рейтинг'
+        verbose_name_plural = 'Рейтинги'
