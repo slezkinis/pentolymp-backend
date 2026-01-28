@@ -1,7 +1,5 @@
-# users/models.py
-from django.contrib.auth.models import AbstractUser
 from django.db import models
-
+from django.contrib.auth.models import AbstractUser
 
 class Rating(models.Model):
     user = models.OneToOneField('User', on_delete=models.CASCADE, related_name='rating')
@@ -9,7 +7,7 @@ class Rating(models.Model):
     matches_played = models.IntegerField('Сыграно матчей', default=0)
     matches_won = models.IntegerField('Побед', default=0)
     matches_lost = models.IntegerField('Поражений', default=0)
-    matches_drawn = models.IntegerField('Ничьих', default=0)
+    matches_drawn = models.IntegerField('Ничьи', default=0)
     
     def update_rating(self, opponent_rating, result, k_factor=32):
         """Обновление рейтинга по формуле Elo"""
@@ -67,8 +65,14 @@ class User(AbstractUser):
         verbose_name='Решённые задачи',
         blank=True
     )
-
+    
     USERNAME_FIELD = 'username'
     
     def __str__(self):
         return self.email
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if not self.rating:
+            self.rating = Rating(user=self)
+            self.rating.save()
