@@ -38,6 +38,7 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -50,9 +51,11 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "tinymce",
     "corsheaders",
+    "channels",
 
     "users",
-    "tasks"
+    "tasks",
+    "pvp"
 ]
 
 MIDDLEWARE = [
@@ -87,7 +90,6 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "pentolymp.wsgi.application"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -118,7 +120,7 @@ SIMPLE_JWT = {
     'UPDATE_LAST_LOGIN': False,
     
     'ALGORITHM': 'HS256',
-    'SIGNING_KEY': SECRET_KEY,  # Будет использован SECRET_KEY из Django
+    'SIGNING_KEY': SECRET_KEY,
     'VERIFYING_KEY': None,
     'AUDIENCE': None,
     'ISSUER': None,
@@ -183,3 +185,25 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+
+# Channels
+ASGI_APPLICATION = 'pentolymp.asgi.application'
+
+# Redis configuration for channels
+REDIS_HOST = os.getenv('REDIS_HOST', '127.0.0.1')
+REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
+# TODO Use redis in docker
+# CHANNEL_LAYERS = {
+#     'default': {
+#         'BACKEND': 'channels_redis.core.RedisChannelLayer',
+#         'CONFIG': {
+#             'hosts': [(REDIS_HOST, REDIS_PORT)],
+#         },
+#     },
+# }
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}

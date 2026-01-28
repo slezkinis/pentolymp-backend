@@ -5,3 +5,8 @@ drf-spectacular
 djangorestframework-simplejwt
 django-tinymce
 django-cors-headers
+channels==4.0.0
+channels-redis==4.1.0
+redis==5.0.1
+daphne==4.0.0
+websockets==12.0
