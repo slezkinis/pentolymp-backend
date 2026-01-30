@@ -87,9 +87,10 @@ class TasksView(generics.ListAPIView):
         
         if difficulty_level:
             queryset = queryset.filter(difficulty_level=difficulty_level)
-        
-        return queryset
-    
+
+        ordering = getattr(self.get_serializer_class(), "ordering", None)
+        return queryset.order_by(*ordering) if ordering else queryset
+
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
@@ -187,9 +188,13 @@ class TipView(APIView):
 )
 class SubjectsView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    queryset = Subject.objects.all()
     serializer_class = SubjectSerializer
     pagination_class = PageNumberPagination
+
+    def get_queryset(self):
+        qs = Subject.objects.all()
+        ordering = getattr(self.get_serializer_class(), "ordering", None)
+        return qs.order_by(*ordering) if ordering else qs
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -219,8 +224,10 @@ class TopicsView(generics.ListAPIView):
     pagination_class = PageNumberPagination
 
     def get_queryset(self):
-        return Topic.objects.filter(subject=self.kwargs['subject_id'])
-    
+        qs = Topic.objects.filter(subject=self.kwargs["subject_id"])
+        ordering = getattr(self.get_serializer_class(), "ordering", None)
+        return qs.order_by(*ordering) if ordering else qs
+
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
