@@ -7,6 +7,8 @@ class TaskSerializer(ModelSerializer):
     is_solved = BooleanField()
     topic = CharField(source='topic.name')
     subject = CharField(source='topic.subject.name')
+    ordering = ["id"]
+
     class Meta:
         model = Task
         fields = 'id', 'name', 'description', 'difficulty_level', 'is_solved', 'topic', "subject"
@@ -28,12 +30,16 @@ class CheckAnswerSerializer(Serializer):
 
 
 class TopicSerializer(ModelSerializer):
+    ordering = ["name"]
+
     class Meta:
         model = Topic
         fields = 'id', 'name'
 
 
 class SubjectSerializer(ModelSerializer):
+    ordering = ["name"]
+
     class Meta:
         model = Subject
         fields = 'id', 'name'
