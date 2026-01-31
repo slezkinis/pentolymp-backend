@@ -1,208 +1,18 @@
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-from asgiref.sync import sync_to_async
+from asgiref.sync import sync_to_async, async_to_sync
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
-from django.db.models import F
-from django.db.models.functions import Abs
 from django.utils import timezone
 
-from pvp.models import Match, MatchParticipant, MatchTask, MatchStatus, MatchResult, PvpSettings, Queue
-from tasks.models import Task, Subject
+from pvp.models import Match, MatchParticipant, MatchTask, MatchStatus, MatchResult
+from pvp.services import MatchScheduler
 from users.models import Rating
 
 
 User = get_user_model()
-
-
-class PvpQueueConsumer(AsyncWebsocketConsumer):
-    async def connect(self):
-        self.user = self.scope["user"]
-        if not self.user.is_authenticated:
-            await self.close()
-            return
-        
-        self.queue_group = "pvp_queue"
-        await self.channel_layer.group_add(
-            self.queue_group,
-            self.channel_name
-        )
-        await self.set_up_rating()
-        await self.accept()
-
-    async def disconnect(self, close_code):
-        try:
-            await self.remove_from_queue()
-            await self.channel_layer.group_discard(
-                self.queue_group,
-                self.channel_name
-            )
-        except Exception as e:
-            pass
-        
-        
-
-    async def receive(self, text_data):
-        data = json.loads(text_data)
-        message_type = data.get('type')
-        try:
-            if message_type == 'find_match':
-                subject_id = data.get('subject_id')
-                await self.find_match(subject_id)
-            elif message_type == 'cancel_search':
-                await self.remove_from_queue()
-                await self.send(text_data=json.dumps({
-                    'type': 'queue_removed'
-                }))
-        except Exception as e:
-            await self.send(text_data=json.dumps({
-                'type': 'error',
-                'message': str(e)
-            }))
-
-    @database_sync_to_async
-    def remove_from_queue(self):
-        try:
-            Queue.objects.filter(user=self.user).delete()
-            return True
-        except Exception:
-            print("Failed to remove from queue")
-            return False
-
-    @database_sync_to_async
-    def create_queue_entry(self, subject):
-        if Queue.objects.filter(user=self.user).exists():
-            raise Exception("User already in queue")
-        try:
-            queue = Queue.objects.create(
-                user=self.user,
-                subject=subject
-            )
-            return queue
-        except Exception:
-            return None
-
-    @database_sync_to_async
-    def find_opponent_in_queue(self, subject_id):
-        try:
-            opponent = Queue.objects.filter(
-                subject_id=subject_id
-            ).exclude(user=self.user).annotate(diff=Abs(F('user__rating__score') - self.user.rating.score)).order_by('diff').first()
-            
-            if opponent:
-                return opponent.user_id
-            return None
-        except Exception as e:
-            print(e)
-            return None
-
-    @database_sync_to_async
-    def delete_queue_entries(self, user_ids):
-        try:
-            Queue.objects.filter(user_id__in=user_ids).delete()
-            return True
-        except Exception:
-            return False
-
-    @database_sync_to_async
-    def set_up_rating(self):
-        Rating.objects.get_or_create(user=self.user)[0]
-
-    async def find_match(self, subject_id):
-        subject = await self.get_subject(subject_id)
-        if not subject:
-            raise Exception("Subject not found")
-        
-        queue_entry = await self.create_queue_entry(subject)
-        if not queue_entry:
-            raise Exception("Failed to create queue entry")
-        
-        opponent_user_id = await self.find_opponent_in_queue(subject_id)
-        if opponent_user_id:
-            match = await self.create_match(subject)
-            if match:
-                await self.add_participant(match, self.user)
-                opponent_user = await self.get_user(opponent_user_id)
-                if opponent_user:
-                    await self.add_participant(match, opponent_user)
-                    await self.generate_match_tasks(match)
-                    await self.delete_queue_entries([self.user.id, opponent_user_id])
-                    await self.send(text_data=json.dumps({
-                        'type': 'match_found',
-                        'match_id': match.id,
-                        'subject': subject.name
-                    }))
-                    
-                    await self.channel_layer.group_send(
-                        "pvp_queue",
-                        {
-                            'type': 'opponent_match_found',
-                            'opponent_id': opponent_user_id,
-                            'match_id': match.id,
-                            'subject': subject.name,
-                            'requester_id': self.user.id
-                        }
-                    )
-        else:
-            await self.send(text_data=json.dumps({
-                'type': 'added_to_queue',
-                "subject": subject.name
-            }))
-
-    async def opponent_match_found(self, event):
-        if event['opponent_id'] == self.user.id:
-            await self.send(text_data=json.dumps({
-                'type': 'match_found',
-                'match_id': event['match_id'],
-                'subject': event['subject']
-            }))
-
-    async def match_found(self, event):
-        await self.send(text_data=json.dumps(event))
-
-    @database_sync_to_async
-    def get_subject(self, subject_id):
-        try:
-            return Subject.objects.get(id=subject_id)
-        except Subject.DoesNotExist:
-            return None
-
-    @database_sync_to_async
-    def get_user(self, user_id):
-        try:
-            return User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return None
-
-    @database_sync_to_async
-    def create_match(self, subject):
-        try:
-            settings = PvpSettings.objects.filter(is_active=True).first()
-            match = Match.objects.create(
-                subject=subject,
-                duration_minutes=settings.duration_minutes if settings else 15,
-                max_tasks=settings.max_tasks if settings else 5
-            )
-            return match
-        except Exception:
-            return None
-
-    @database_sync_to_async
-    def add_participant(self, match, user):
-        participant_count = MatchParticipant.objects.filter(match=match).count()
-        return MatchParticipant.objects.create(
-            match=match,
-            user=user,
-            player_number=participant_count + 1
-        )
-
-    @database_sync_to_async
-    def generate_match_tasks(self, match):
-        tasks = Task.objects.filter(topic__subject=match.subject).order_by('?')[:match.max_tasks]
-        for i, task in enumerate(tasks, 1):
-            MatchTask.objects.create(match=match, task=task, order=i)
 
 
 class PvpMatchConsumer(AsyncWebsocketConsumer):
@@ -282,13 +92,12 @@ class PvpMatchConsumer(AsyncWebsocketConsumer):
                 'correct': result['correct'],
                 'task_id': result['task_id'],
                 'task_order': result['task_order'],
-                'time_taken': result['time_taken']
             }
         )
         
         if result['correct']:
             await self.set_task_solved(result['task_id'])
-            await self.update_progress(result['task_id'], result['time_taken'])
+            await self.update_progress(result['task_id'])
             is_complete, data = await self.check_match_complete()
             if is_complete:
                 await self.channel_layer.group_send(
@@ -347,7 +156,6 @@ class PvpMatchConsumer(AsyncWebsocketConsumer):
                     'correct': event['correct'],
                     'task_id': event['task_id'],
                     'task_order': event['task_order'],
-                    'time_taken': event['time_taken']
                 }
             }))
         else:
@@ -358,7 +166,6 @@ class PvpMatchConsumer(AsyncWebsocketConsumer):
                     'username': event.get('username', 'Opponent'),
                     'correct': event['correct'],
                     'task_order': event['task_order'],
-                    'time_taken': event['time_taken']
                 }
             }))
 
@@ -477,6 +284,10 @@ class PvpMatchConsumer(AsyncWebsocketConsumer):
                 match_id=self.match_id,
                 order=participant.current_task_index + 1
             ).first()
+
+            match = Match.objects.get(id=self.match_id)
+            if match.status != MatchStatus.PLAYING:
+                return {'correct': False, 'task_id': match_task.task.id, 'task_order': match_task.order}
             
             if match_task:
                 is_correct = match_task.task.check_answer(answer)
@@ -484,19 +295,17 @@ class PvpMatchConsumer(AsyncWebsocketConsumer):
                     'correct': is_correct,
                     'task_id': match_task.task.id,
                     'task_order': match_task.order,
-                    'time_taken': 0  # TODO: Implement timing
                 }
             return {'correct': False, 'task_id': None, 'task_order': None}
         except:
             return {'correct': False, 'task_id': None, 'task_order': None}
 
     @database_sync_to_async
-    def update_progress(self, task_id, time_taken):
+    def update_progress(self, task_id):
         try:
             participant = MatchParticipant.objects.get(match_id=self.match_id, user=self.user)
             participant.tasks_solved += 1
             participant.current_task_index += 1
-            participant.time_taken += time_taken
             participant.save()
             return True
         except:
@@ -518,7 +327,7 @@ class PvpMatchConsumer(AsyncWebsocketConsumer):
                 return False
             match.status = MatchStatus.TECHNICAL_ERROR
             match.result = MatchResult.TECHNICAL
-            match.finished_at = datetime.now()
+            match.finished_at = timezone.now()
             match.save()
             
             participants = match.participants.all()
@@ -536,8 +345,11 @@ class PvpMatchConsumer(AsyncWebsocketConsumer):
             
             if len(participants) == 2 and match.status == MatchStatus.WAITING:
                 match.status = MatchStatus.PLAYING
-                match.started_at = datetime.now()
+                match.started_at = timezone.now()
                 match.save()
+
+                scheduler = MatchScheduler()
+                scheduler.schedule_match_finish(self.match_id, match.duration_minutes, self.finish_match_timeout)
                 return True
             return False
         except:
@@ -556,14 +368,23 @@ class PvpMatchConsumer(AsyncWebsocketConsumer):
             return (match.started_at + timedelta(minutes=match.duration_minutes)).isoformat()
         except:
             return None
+        
+    def finish_match_timeout(self):
+        is_completed, data = async_to_sync(self.check_match_complete)(time_expired=True)
+        if is_completed:
+            async_to_sync(self.channel_layer.group_send)(
+                self.match_group,
+                data
+            )
+            return
+
     @database_sync_to_async
-    def check_match_complete(self):
+    def check_match_complete(self, time_expired=False, match_id=None):
         try:
             match = Match.objects.get(id=self.match_id)
             participants = list(match.participants.all())
             
             all_complete = any(p.tasks_solved == match.match_tasks.count() for p in participants)
-            time_expired = False  # TODO: Add check time
             
             if all_complete or time_expired:
                 if participants[0].tasks_solved > participants[1].tasks_solved:
@@ -577,18 +398,26 @@ class PvpMatchConsumer(AsyncWebsocketConsumer):
                 
                 match.status = MatchStatus.FINISHED
                 match.result = result
-                match.winner = winner
-                match.finished_at = datetime.now()
+                match.winner = winner if result != MatchResult.DRAW else None
+                match.finished_at = timezone.now()
                 match.save()
                 
+                if not time_expired:
+                    scheduler = MatchScheduler()
+                    scheduler.cancel_match_schedule(self.match_id)
                 self.update_ratings(participants, result)
+
+                for p in participants:
+                    p.time_taken += (timezone.now() - match.started_at).seconds
+                    p.save()
+
                 return (True, {
                         'type': 'match_finished',
                         'result': result,
                         'winner': {
                             'user_id': winner.id,
                             'username': winner.username
-                        },
+                        } if result != MatchResult.DRAW else None,
                         'participants': [
                             {
                                 'user_id': p.user.id,
@@ -607,7 +436,7 @@ class PvpMatchConsumer(AsyncWebsocketConsumer):
             return (False, {})
 
     def update_ratings(self, participants, result):
-        from pvp.rating_service import RatingService
+        from pvp.services import RatingService
         RatingService.update_match_ratings(self.match_id)
 
     async def match_finished(self, event):
