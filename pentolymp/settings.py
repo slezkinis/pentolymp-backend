@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "tinymce",
     "corsheaders",
     "channels",
+    "django_apscheduler",
 
     "users",
     "tasks",

@@ -1,14 +1,12 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from datetime import timedelta
-from decimal import Decimal
 
 from pvp.models import (
     Queue, Match, MatchParticipant, MatchTask, PvpSettings,
     MatchStatus, MatchResult
 )
-from pvp.rating_service import RatingService
+from pvp.services import RatingService
 from pvp.serializers import (
     MatchSerializer, MatchParticipantSerializer, MatchTaskSerializer,
     CreateMatchSerializer, PvpSettingsSerializer, RatingSerializer
