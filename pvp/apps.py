@@ -1,5 +1,5 @@
 from django.apps import AppConfig
-
+from django.db.utils import OperationalError
 
 class PvpConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
@@ -19,3 +19,6 @@ class PvpConfig(AppConfig):
                 k_factor=32,
                 initial_rating=1000
             )
+        except OperationalError:
+            print("Database is not ready yet")
+            pass
