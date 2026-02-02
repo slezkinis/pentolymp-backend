@@ -1,4 +1,9 @@
+import csv
 from django.contrib import admin
+from django.http import HttpResponse
+from django.urls import path
+from django.utils import timezone
+
 from .models import Match, MatchParticipant, MatchTask, PvpSettings, Queue
 
 
@@ -21,6 +26,7 @@ class MatchAdmin(admin.ModelAdmin):
     search_fields = ['id', 'subject__name']
     readonly_fields = ['created_at', 'started_at', 'finished_at']
     inlines = [MatchParticipantInline, MatchTaskInline]
+    change_list_template = 'admin/pvp_match_change_list.html'
     
     fieldsets = (
         ('Основное', {
@@ -34,21 +40,70 @@ class MatchAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         })
     )
+    
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('export-csv/', self.admin_site.admin_view(self.export_csv), name='pvp_match_export_csv'),
+        ]
+        return custom_urls + urls
+    
+    def export_csv(self, request):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="matches_statistics.csv" {timezone.now().strftime("%Y-%m-%d")}.csv'
+        response.write('\ufeff')
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'ID матча', 'Предмет', 'Статус', 'Результат', 'Победитель',
+            'Дата создания', 'Дата начала', 'Дата окончания', 'Длительность (мин)',
+            'Макс. задач', 'Игрок 1', 'Игрок 2',
+            'Решено задач (Игрок 1)', 'Решено задач (Игрок 2)',
+            'Время (Игрок 1, сек)', 'Время (Игрок 2, сек)'
+        ])
+        
+        matches = Match.objects.all().select_related('subject', 'winner').prefetch_related('participants__user')
+        
+        for match in matches:
+            participants = list(match.participants.all())
+            player1 = participants[0] if len(participants) > 0 else None
+            player2 = participants[1] if len(participants) > 1 else None
+            
+            writer.writerow([
+                match.id,
+                match.subject.name,
+                match.get_status_display(),
+                match.get_result_display() if match.result else '',
+                match.winner.username if match.winner else '',
+                match.created_at.strftime('%Y-%m-%d %H:%M:%S') if match.created_at else '',
+                match.started_at.strftime('%Y-%m-%d %H:%M:%S') if match.started_at else '',
+                match.finished_at.strftime('%Y-%m-%d %H:%M:%S') if match.finished_at else '',
+                match.duration_minutes,
+                match.max_tasks,
+                player1.user.username if player1 else '',
+                player2.user.username if player2 else '',
+                player1.tasks_solved if player1 else '',
+                player2.tasks_solved if player2 else '',
+                player1.time_taken if player1 else '',
+                player2.time_taken if player2 else '',
+            ])
+        
+        return response
 
 
-@admin.register(MatchParticipant)
-class MatchParticipantAdmin(admin.ModelAdmin):
-    list_display = ['user', 'match', 'player_number', 'tasks_solved', 'time_taken', 'connected_at']
-    list_filter = ['player_number', 'connected_at', 'match__status']
-    search_fields = ['user__username', 'user__email', 'match__id']
-    readonly_fields = ['connected_at']
+# @admin.register(MatchParticipant)
+# class MatchParticipantAdmin(admin.ModelAdmin):
+#     list_display = ['user', 'match', 'player_number', 'tasks_solved', 'time_taken', 'connected_at']
+#     list_filter = ['player_number', 'connected_at', 'match__status']
+#     search_fields = ['user__username', 'user__email', 'match__id']
+#     readonly_fields = ['connected_at']
 
 
-@admin.register(MatchTask)
-class MatchTaskAdmin(admin.ModelAdmin):
-    list_display = ['match', 'task', 'order']
-    list_filter = ['match__subject', 'order']
-    search_fields = ['match__id', 'task__name']
+# @admin.register(MatchTask)
+# class MatchTaskAdmin(admin.ModelAdmin):
+#     list_display = ['match', 'task', 'order']
+#     list_filter = ['match__subject', 'order']
+#     search_fields = ['match__id', 'task__name']
 
 
 @admin.register(PvpSettings)
@@ -70,10 +125,10 @@ class PvpSettingsAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(Queue)
-class QueueAdmin(admin.ModelAdmin):
-    list_display = ['user', 'subject', 'created_at']
-    list_filter = ['subject', 'created_at']
-    search_fields = ['user__username', 'user__email', 'subject__name']
-    readonly_fields = ['created_at']
+# @admin.register(Queue)
+# class QueueAdmin(admin.ModelAdmin):
+#     list_display = ['user', 'subject', 'created_at']
+#     list_filter = ['subject', 'created_at']
+#     search_fields = ['user__username', 'user__email', 'subject__name']
+#     readonly_fields = ['created_at']
 
