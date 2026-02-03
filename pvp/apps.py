@@ -17,7 +17,7 @@ class PvpConfig(AppConfig):
                 duration_minutes=15,
                 max_tasks=5,
                 k_factor=32,
-                initial_rating=1000
+                initial_rating=1000,
             )
         except OperationalError:
             print("Database is not ready yet")

@@ -1,9 +1,9 @@
+from django.shortcuts import get_object_or_404
+
 from rest_framework import generics, permissions
 from rest_framework.serializers import BooleanField
 from rest_framework.views import APIView, Response
 from rest_framework.pagination import PageNumberPagination
-
-from django.shortcuts import get_object_or_404
 
 from .models import Task, Subject, Topic
 from .serializers import TaskSerializer, CheckAnswerSerializer, SubjectSerializer, TopicSerializer, TipSerializer

@@ -1,7 +1,11 @@
-from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth import authenticate
+from rest_framework import serializers
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
+
 from .models import User
+
 
 class UserSerializer(serializers.ModelSerializer):
     rating = serializers.SerializerMethodField(method_name='get_rating')
@@ -26,6 +30,22 @@ class UserSerializer(serializers.ModelSerializer):
 
 class RefreshSerializer(serializers.Serializer):
     refresh = serializers.CharField()
+    access = serializers.CharField(read_only=True)
+
+    def validate(self, attrs):
+        super().validate(attrs)
+        try:
+            refresh_token = RefreshToken(attrs['refresh'])
+            user = User.objects.get(id=refresh_token.payload['user_id'])
+            if user.is_active == False:
+                raise serializers.ValidationError("Аккаунт отключён! Обратитесь к админам:)")
+            access_token = refresh_token.access_token
+            return {
+                'access': str(access_token),
+                'refresh': attrs['refresh']
+            }
+        except TokenError:
+            raise serializers.ValidationError("Неверный refresh токен!")
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
@@ -65,15 +85,14 @@ class LoginSerializer(serializers.Serializer):
             except User.DoesNotExist:
                 raise serializers.ValidationError("Неверный логин или пароль!")
             
-            user = authenticate(username=user.username, password=password)
-            if not user:
-                raise serializers.ValidationError("Неверный логин или пароль!")
-            
             if not user.is_active:
                 raise serializers.ValidationError("Аккаунт отключён! Обратитесь к админам:)")
-            
+
+            auth_user = authenticate(username=user.username, password=password)
+            if not auth_user:
+                raise serializers.ValidationError("Неверный логин или пароль!")
         else:
             raise serializers.ValidationError("Must include 'email' and 'password'")
         
-        attrs['user'] = user
+        attrs['user'] = auth_user
         return attrs

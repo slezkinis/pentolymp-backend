@@ -40,13 +40,9 @@ class Match(models.Model):
     status = models.CharField("Статус", choices=MatchStatus.choices, default=MatchStatus.WAITING)
     result = models.CharField("Результат", choices=MatchResult.choices, blank=True, null=True)
     winner = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True, verbose_name="Победитель")
-    
-    # Временные метки
     created_at = models.DateTimeField("Создан", auto_now_add=True)
     started_at = models.DateTimeField("Начат", blank=True, null=True)
     finished_at = models.DateTimeField("Завершен", blank=True, null=True)
-    
-    # Настройки матча
     duration_minutes = models.IntegerField("Длительность (минуты)", default=15)
     max_tasks = models.IntegerField("Максимум задач", default=5)
     
@@ -61,18 +57,10 @@ class Match(models.Model):
 class MatchParticipant(models.Model):
     match = models.ForeignKey(Match, on_delete=models.CASCADE, related_name="participants")
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    
-    # Порядковый номер в матче (1 или 2)
     player_number = models.IntegerField("Номер игрока")
-    
-    # Статистика матча
     tasks_solved = models.IntegerField("Решено задач", default=0)
     time_taken = models.FloatField("Затрачено времени (секунды)", default=0)
-    
-    # Текущие задачи в матче
     current_task_index = models.IntegerField("Текущий индекс задачи", default=0)
-    
-    # Время подключения к матчу
     connected_at = models.DateTimeField("Подключен", auto_now_add=True)
     
     class Meta:
@@ -104,6 +92,8 @@ class PvpSettings(models.Model):
     max_tasks = models.IntegerField("Максимум задач", default=5)
     k_factor = models.IntegerField("K-фактор Elo", default=32)
     initial_rating = models.IntegerField("Начальный рейтинг", default=1000)
+    max_rating_diff_for_nodelay = models.IntegerField("Максимальная разница рейтинга для отсутствия задержек", default=200)
+    min_wait_time = models.IntegerField("Минимальное время ожидания (секунды), если задержка", default=10)
     
     is_active = models.BooleanField("Активна", default=True)
     

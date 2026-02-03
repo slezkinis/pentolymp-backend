@@ -91,24 +91,9 @@ class MatchAdmin(admin.ModelAdmin):
         return response
 
 
-# @admin.register(MatchParticipant)
-# class MatchParticipantAdmin(admin.ModelAdmin):
-#     list_display = ['user', 'match', 'player_number', 'tasks_solved', 'time_taken', 'connected_at']
-#     list_filter = ['player_number', 'connected_at', 'match__status']
-#     search_fields = ['user__username', 'user__email', 'match__id']
-#     readonly_fields = ['connected_at']
-
-
-# @admin.register(MatchTask)
-# class MatchTaskAdmin(admin.ModelAdmin):
-#     list_display = ['match', 'task', 'order']
-#     list_filter = ['match__subject', 'order']
-#     search_fields = ['match__id', 'task__name']
-
-
 @admin.register(PvpSettings)
 class PvpSettingsAdmin(admin.ModelAdmin):
-    list_display = ['name', 'duration_minutes', 'max_tasks', 'k_factor', 'initial_rating', 'is_active']
+    list_display = ['name', 'duration_minutes', 'max_tasks', 'max_rating_diff_for_nodelay', 'min_wait_time', 'is_active']
     list_filter = ['is_active']
     search_fields = ['name']
     
@@ -121,6 +106,9 @@ class PvpSettingsAdmin(admin.ModelAdmin):
         }),
         ('Настройки рейтинга', {
             'fields': ('k_factor', 'initial_rating')
+        }),
+        ('Настройки задержек', {
+            'fields': ('max_rating_diff_for_nodelay', 'min_wait_time')
         })
     )
 

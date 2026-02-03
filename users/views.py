@@ -1,10 +1,8 @@
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, extend_schema_view
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-import rest_framework_simplejwt
-from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, extend_schema_view
-
 
 from .models import User
 from .serializers import (
@@ -29,6 +27,7 @@ class RegisterView(generics.CreateAPIView):
     )
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
+
 
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -90,16 +89,11 @@ class RefreshTokenView(APIView):
     )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
+    
         if serializer.is_valid():
-            try:
-                refresh_token = RefreshToken(serializer.validated_data['refresh'])
-                access_token = refresh_token.access_token
-                return Response({
-                    'access': str(access_token)
-                })
-            except rest_framework_simplejwt.exceptions.TokenError:
-                return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
 
 
 @extend_schema_view(
