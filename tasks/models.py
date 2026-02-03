@@ -20,7 +20,7 @@ class Task(models.Model):
         return user.solved_tasks.filter(id=self.id).exists()
     
     def check_answer(self, answer):
-        return self.answer == answer
+        return self.answer.strip().lower() == answer.strip().lower()
     
     def __str__(self) -> str:
         return self.name

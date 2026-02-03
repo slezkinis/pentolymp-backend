@@ -7,6 +7,8 @@ from datetime import timedelta
 import logging
 import atexit
 
+from .matchmaking import process_waiting_players
+
 logger = logging.getLogger(__name__)
 
 class MatchScheduler:
@@ -29,6 +31,15 @@ class MatchScheduler:
                 'max_instances': 1,
                 'misfire_grace_time': 30,
             }
+        )
+        
+        self.scheduler.add_job(
+            process_waiting_players,
+            trigger='interval',
+            seconds=2,
+            id='matchmaking_check',
+            name='Periodic matchmaking check',
+            replace_existing=True,
         )
         
         self._cleanup_old_jobs()

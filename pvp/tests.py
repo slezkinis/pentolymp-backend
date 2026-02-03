@@ -39,7 +39,6 @@ class QueueModelTest(TestCase):
         """Тест уникальности пользователя в очереди"""
         Queue.objects.create(user=self.user, subject=self.subject)
 
-        # Попытка создать вторую запись для того же пользователя должна вызвать ошибку
         with self.assertRaises(Exception):
             Queue.objects.create(user=self.user, subject=self.subject)
 
@@ -141,7 +140,6 @@ class MatchParticipantModelTest(TestCase):
             player_number=1
         )
 
-        # Попытка создать второго участника с тем же пользователем должна вызвать ошибку
         with self.assertRaises(Exception):
             MatchParticipant.objects.create(
                 match=self.match,
@@ -190,7 +188,6 @@ class MatchTaskModelTest(TestCase):
         """Тест уникальности порядка задачи в матче"""
         MatchTask.objects.create(match=self.match, task=self.task, order=1)
 
-        # Попытка создать вторую задачу с тем же порядком должна вызвать ошибку
         task2 = Task.objects.create(
             name='Вторая задача',
             description='Описание',
@@ -249,8 +246,6 @@ class RatingServiceTest(TestCase):
         self.subject = Subject.objects.create(name='Математика')
         self.match = Match.objects.create(subject=self.subject)
 
-        # Рейтинги создаются автоматически при создании пользователя
-        # Обновляем их до нужных значений
         rating1, _ = Rating.objects.get_or_create(user=self.user1)
         rating1.score = 1000
         rating1.save()
@@ -265,11 +260,9 @@ class RatingServiceTest(TestCase):
             1000, 1000, 'player1_win', k_factor=32
         )
 
-        # При равных рейтингах ожидаемый результат 0.5 для каждого
-        # Победитель получает +16, проигравший -16
         self.assertGreater(new_rating1, 1000)
         self.assertLess(new_rating2, 1000)
-        self.assertEqual(new_rating1 + new_rating2, 2000)  # Сумма рейтингов сохраняется
+        self.assertEqual(new_rating1 + new_rating2, 2000)
 
     def test_calculate_elo_rating_player2_win(self):
         """Тест расчета рейтинга при победе второго игрока"""
@@ -287,7 +280,6 @@ class RatingServiceTest(TestCase):
             1000, 1000, 'draw', k_factor=32
         )
 
-        # При ничьей рейтинги не должны измениться (ожидаемый результат = фактический)
         self.assertEqual(new_rating1, 1000)
         self.assertEqual(new_rating2, 1000)
 
@@ -297,32 +289,25 @@ class RatingServiceTest(TestCase):
             1000, 1000, 'technical', k_factor=32
         )
 
-        # При технической ошибке рейтинги не меняются
         self.assertEqual(new_rating1, 1000)
         self.assertEqual(new_rating2, 1000)
 
     def test_calculate_elo_rating_stronger_player_wins(self):
         """Тест расчета рейтинга когда сильный игрок побеждает"""
-        # Сильный игрок (1200) побеждает слабого (800)
         new_rating1, new_rating2 = RatingService.calculate_elo_rating(
             1200, 800, 'player1_win', k_factor=32
         )
-
-        # Сильный игрок получает меньше очков за победу над слабым
         self.assertGreater(new_rating1, 1200)
         self.assertLess(new_rating2, 800)
-        # Но изменение меньше, чем при равных рейтингах
         rating_change = new_rating1 - 1200
         self.assertLess(rating_change, 16)
 
     def test_calculate_elo_rating_weaker_player_wins(self):
         """Тест расчета рейтинга когда слабый игрок побеждает"""
-        # Слабый игрок (800) побеждает сильного (1200)
         new_rating1, new_rating2 = RatingService.calculate_elo_rating(
             800, 1200, 'player1_win', k_factor=32
         )
 
-        # Слабый игрок получает больше очков за победу над сильным
         self.assertGreater(new_rating1, 800)
         self.assertLess(new_rating2, 1200)
         rating_change = new_rating1 - 800
@@ -330,7 +315,6 @@ class RatingServiceTest(TestCase):
 
     def test_update_match_ratings_player1_win(self):
         """Тест обновления рейтингов после завершения матча (победа игрока 1)"""
-        # Создаем участников
         participant1 = MatchParticipant.objects.create(
             match=self.match,
             user=self.user1,
@@ -342,18 +326,15 @@ class RatingServiceTest(TestCase):
             player_number=2
         )
 
-        # Завершаем матч
         self.match.status = MatchStatus.FINISHED
         self.match.result = MatchResult.PLAYER1_WIN
         self.match.winner = self.user1
         self.match.finished_at = timezone.now()
         self.match.save()
 
-        # Обновляем рейтинги
         result = RatingService.update_match_ratings(self.match.id)
         self.assertTrue(result)
 
-        # Проверяем обновленные рейтинги
         rating1 = Rating.objects.get(user=self.user1)
         rating2 = Rating.objects.get(user=self.user2)
 
@@ -387,7 +368,6 @@ class RatingServiceTest(TestCase):
         rating1 = Rating.objects.get(user=self.user1)
         rating2 = Rating.objects.get(user=self.user2)
 
-        # При ничьей рейтинги не должны сильно измениться
         self.assertEqual(rating1.matches_played, 1)
         self.assertEqual(rating2.matches_played, 1)
         self.assertEqual(rating1.matches_drawn, 1)
@@ -416,16 +396,13 @@ class RatingServiceTest(TestCase):
         rating1 = Rating.objects.get(user=self.user1)
         rating2 = Rating.objects.get(user=self.user2)
 
-        # При технической ошибке рейтинги не меняются
         self.assertEqual(rating1.score, 1000)
         self.assertEqual(rating2.score, 1000)
-        # Но матчи все равно засчитываются
         self.assertEqual(rating1.matches_played, 1)
         self.assertEqual(rating2.matches_played, 1)
 
     def test_get_leaderboard(self):
         """Тест получения таблицы лидеров"""
-        # Создаем еще несколько пользователей с разными рейтингами
         user3 = User.objects.create_user(
             username='player3',
             email='player3@example.com',
@@ -437,7 +414,6 @@ class RatingServiceTest(TestCase):
             password='testpass123'
         )
 
-        # Рейтинги создаются автоматически, обновляем их
         rating3, _ = Rating.objects.get_or_create(user=user3)
         rating3.score = 1200
         rating3.save()
@@ -449,7 +425,6 @@ class RatingServiceTest(TestCase):
         leaderboard = RatingService.get_leaderboard(limit=10)
 
         self.assertEqual(len(leaderboard), 4)
-        # Проверяем сортировку по убыванию рейтинга
         self.assertEqual(leaderboard[0]['rating'], 1200)
         self.assertEqual(leaderboard[1]['rating'], 1000)
         self.assertEqual(leaderboard[2]['rating'], 1000)
@@ -457,7 +432,6 @@ class RatingServiceTest(TestCase):
 
     def test_get_leaderboard_with_subject_filter(self):
         """Тест получения таблицы лидеров с фильтром по предмету"""
-        # Создаем матч и участников
         participant1 = MatchParticipant.objects.create(
             match=self.match,
             user=self.user1,
@@ -471,7 +445,6 @@ class RatingServiceTest(TestCase):
 
         leaderboard = RatingService.get_leaderboard(limit=10, subject_id=self.subject.id)
 
-        # Должны быть только пользователи, участвовавшие в матчах по этому предмету
         self.assertGreaterEqual(len(leaderboard), 2)
         user_ids = [entry['user_id'] for entry in leaderboard]
         self.assertIn(self.user1.id, user_ids)
@@ -559,7 +532,7 @@ class SerializerTest(TestCase):
         """Тест невалидного CreateMatchSerializer (неверная длительность)"""
         serializer = CreateMatchSerializer(data={
             'subject_id': self.subject.id,
-            'duration_minutes': 100,  # Превышает максимум
+            'duration_minutes': 100,
             'max_tasks': 10
         })
         self.assertFalse(serializer.is_valid())
@@ -569,7 +542,7 @@ class SerializerTest(TestCase):
         serializer = CreateMatchSerializer(data={
             'subject_id': self.subject.id,
             'duration_minutes': 15,
-            'max_tasks': 25  # Превышает максимум
+            'max_tasks': 25 
         })
         self.assertFalse(serializer.is_valid())
 
@@ -610,7 +583,6 @@ class MatchFlowTest(TestCase):
         self.subject = Subject.objects.create(name='Математика')
         self.topic = Topic.objects.create(name='Алгебра', subject=self.subject)
 
-        # Создаем задачи
         self.tasks = []
         for i in range(5):
             task = Task.objects.create(
@@ -624,7 +596,6 @@ class MatchFlowTest(TestCase):
 
     def test_complete_match_flow(self):
         """Тест полного цикла матча от создания до завершения"""
-        # Создаем матч
         match = Match.objects.create(
             subject=self.subject,
             duration_minutes=15,
@@ -632,7 +603,6 @@ class MatchFlowTest(TestCase):
         )
         self.assertEqual(match.status, MatchStatus.WAITING)
 
-        # Добавляем участников
         participant1 = MatchParticipant.objects.create(
             match=match,
             user=self.user1,
@@ -644,38 +614,31 @@ class MatchFlowTest(TestCase):
             player_number=2
         )
 
-        # Добавляем задачи
         for i, task in enumerate(self.tasks, 1):
             MatchTask.objects.create(match=match, task=task, order=i)
 
-        # Начинаем матч
         match.status = MatchStatus.PLAYING
         match.started_at = timezone.now()
         match.save()
 
-        # Игрок 1 решает 3 задачи
         participant1.tasks_solved = 3
         participant1.current_task_index = 3
         participant1.save()
 
-        # Игрок 2 решает 2 задачи
         participant2.tasks_solved = 2
         participant2.current_task_index = 2
         participant2.save()
 
-        # Завершаем матч
         match.status = MatchStatus.FINISHED
         match.result = MatchResult.PLAYER1_WIN
         match.winner = self.user1
         match.finished_at = timezone.now()
         match.save()
 
-        # Проверяем результаты
         self.assertEqual(match.status, MatchStatus.FINISHED)
         self.assertEqual(match.result, MatchResult.PLAYER1_WIN)
         self.assertEqual(match.winner, self.user1)
 
-        # Обновляем рейтинги
         RatingService.update_match_ratings(match.id)
 
         rating1 = Rating.objects.get(user=self.user1)
@@ -701,7 +664,6 @@ class MatchFlowTest(TestCase):
             player_number=2
         )
 
-        # Оба решают одинаковое количество задач
         participant1.tasks_solved = 3
         participant2.tasks_solved = 3
         participant1.save()
