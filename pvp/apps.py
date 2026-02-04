@@ -22,3 +22,5 @@ class PvpConfig(AppConfig):
         except OperationalError:
             print("Database is not ready yet")
             pass
+        except Exception as e:
+            print(e)
