@@ -38,7 +38,6 @@ class User(AbstractUser):
         is_new = self.pk is None
         super().save(*args, **kwargs)
         
-        # Создаем рейтинг только для нового пользователя
         if is_new:
             Rating.objects.create(user=self)
 
@@ -53,7 +52,7 @@ class Rating(models.Model):
     
     def update_rating(self, opponent_rating, result, k_factor=32):
         """Обновление рейтинга по формуле Elo"""
-        if result == 'technical':  # техническая ничья или отмена
+        if result == 'technical':
             return
         
         expected_score = 1 / (1 + 10 ** ((opponent_rating - self.score) / 400))
@@ -62,7 +61,7 @@ class Rating(models.Model):
             actual_score = 1.0
         elif result == 'loss':
             actual_score = 0.0
-        else:  # draw
+        else:
             actual_score = 0.5
         
         self.score += round(k_factor * (actual_score - expected_score))
