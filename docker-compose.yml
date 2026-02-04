@@ -1,8 +1,33 @@
 services:
+  db:
+    image: postgres:14
+    restart: always
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: userpass
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   backend:
-    container_name: django_app
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
+    volumes:
+      - .:/app
     ports:
       - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgres://user:userpass@db:5432/db
+
+volumes:
+  postgres_data:

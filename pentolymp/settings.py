@@ -144,9 +144,17 @@ SIMPLE_JWT = {
 AUTH_USER_MODEL = 'users.User'
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+    # "default": {
+    #     "ENGINE": "django.db.backends.sqlite3",
+    #     "NAME": BASE_DIR / "db.sqlite3",
+    # }
+'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'db',
+        'USER': 'user',
+        'PASSWORD': 'userpass',
+        'HOST': 'db',
+        'PORT': '5432',
     }
 }
 
