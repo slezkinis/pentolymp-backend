@@ -8,4 +8,5 @@ urlpatterns = [
     path("tasks/<int:pk>/tip/", views.TipView.as_view(), name="tip"),
     path("subjects/", views.SubjectsView.as_view(), name="subjects"),
     path("subjects/<int:subject_id>/topics/", views.TopicsView.as_view(), name="topics"),
+    path("statistic-subject/", views.SubjectStatisticView.as_view(), name="statistic_subject"),
 ]

@@ -1,4 +1,6 @@
 from django.shortcuts import get_object_or_404
+from django.db.models import Count, Q, F, ExpressionWrapper, FloatField
+from django.db.models.functions import Cast
 
 from rest_framework import generics, permissions
 from rest_framework.serializers import BooleanField
@@ -6,7 +8,11 @@ from rest_framework.views import APIView, Response
 from rest_framework.pagination import PageNumberPagination
 
 from .models import Task, Subject, Topic
-from .serializers import TaskSerializer, CheckAnswerSerializer, SubjectSerializer, TopicSerializer, TipSerializer
+from .serializers import (
+    TaskSerializer, CheckAnswerSerializer,
+    SubjectSerializer, TopicSerializer,
+    TipSerializer, SubjectStatisticSerializer
+)
 
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiResponse, OpenApiParameter, OpenApiTypes, OpenApiExample
 
@@ -235,4 +241,41 @@ class TopicsView(generics.ListAPIView):
             serializer = self.get_serializer(page, many=True, context={'request': request})
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        summary="Получение статистики по учебным предметам",
+        description="Получение статистики по учебным предметам",
+        responses={
+            200: SubjectStatisticSerializer(many=True),
+            400: OpenApiResponse(description="Validation error")
+        },
+        tags=["Tasks"]
+    )
+)
+class SubjectStatisticView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        subjects = Subject.objects.all().order_by('name')
+        subjects_with_stats = []
+        for subject in subjects:
+            all_tasks = subject.get_tasks()
+            solved_tasks = all_tasks.filter(user=user)
+            subject.tasks_total = all_tasks.count()
+            subject.tasks_solved = solved_tasks.count()
+            subject.percentage = (
+                round((subject.tasks_solved / subject.tasks_total * 100), 2)
+                if subject.tasks_total > 0 else 0.0
+            )
+            subjects_with_stats.append(subject)
+        
+        serializer = SubjectStatisticSerializer(
+            subjects_with_stats, 
+            many=True,
+            context={'request': request}
+        )
         return Response(serializer.data)

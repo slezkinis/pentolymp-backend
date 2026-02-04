@@ -1,17 +1,17 @@
-from rest_framework.serializers import ModelSerializer, BooleanField, CharField, ValidationError, Serializer
+import rest_framework.serializers as serializers
 
 from .models import Task, Topic, Subject
 
 
-class TaskSerializer(ModelSerializer):
-    is_solved = BooleanField()
-    topic = CharField(source='topic.name')
-    subject = CharField(source='topic.subject.name')
+class TaskSerializer(serializers.ModelSerializer):
+    is_solved = serializers.BooleanField()
+    topic = serializers.CharField(source='topic.name')
+    subject = serializers.CharField(source='topic.subject.name')
     ordering = ["id"]
 
     class Meta:
         model = Task
-        fields = 'id', 'name', 'description', 'difficulty_level', 'is_solved', 'topic', "subject"
+        fields = ['id', 'name', 'description', 'difficulty_level', 'is_solved', 'topic', "subject"]
     
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -22,30 +22,48 @@ class TaskSerializer(ModelSerializer):
         return self.instance.check_answer(answer)
 
 
-class CheckAnswerSerializer(Serializer):
-    answer = CharField(required=True)
+class CheckAnswerSerializer(serializers.Serializer):
+    answer = serializers.CharField(required=True)
 
     def check(self, task, answer):
         return task.check_answer(answer)
 
 
-class TopicSerializer(ModelSerializer):
+class TopicSerializer(serializers.ModelSerializer):
     ordering = ["name"]
 
     class Meta:
         model = Topic
-        fields = 'id', 'name'
+        fields = ['id', 'name']
 
 
-class SubjectSerializer(ModelSerializer):
+class SubjectSerializer(serializers.ModelSerializer):
     ordering = ["name"]
 
     class Meta:
         model = Subject
-        fields = 'id', 'name'
+        fields = ['id', 'name']
 
 
-class TipSerializer(ModelSerializer):
+class TipSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
-        fields = 'id', 'tip'
+        fields = ['id', 'tip']
+
+
+class SubjectStatisticSerializer(serializers.ModelSerializer):
+    name = serializers.CharField()
+    tasks_solved = serializers.IntegerField()
+    tasks_total = serializers.IntegerField()
+    percentage = serializers.FloatField()
+
+    class Meta:
+        model = Subject
+        fields = ["name", "tasks_solved", "tasks_total", "percentage"]
+    
+    def get_percentage(self, obj):
+        if hasattr(obj, 'percentage'):
+            return round(obj.percentage, 2)
+        if obj.tasks_total > 0:
+            return round((obj.tasks_solved / obj.tasks_total) * 100, 2)
+        return 0.0

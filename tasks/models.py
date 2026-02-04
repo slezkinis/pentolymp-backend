@@ -33,6 +33,9 @@ class Task(models.Model):
 class Subject(models.Model):
     name = models.CharField("Название", max_length=30)
 
+    def get_tasks(self):
+        return Task.objects.filter(topic__subject=self)
+
     def __str__(self) -> str:
         return self.name
     

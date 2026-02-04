@@ -1,5 +1,6 @@
 from django.utils import timezone
 from django.db import transaction
+from django.db import OperationalError
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 import logging
@@ -45,7 +46,8 @@ def process_waiting_players():
                             Queue.objects.filter(user_id__in=[player1.user_id, player2.user_id]).delete()
                             logger.info(f"Created match {match_id} between {player1.user.username} and {player2.user.username}")
                             break
-            
+    except OperationalError:
+        pass
     except Exception as e:
         logger.error(f"Error in process_waiting_players: {e}")
 

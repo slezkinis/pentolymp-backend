@@ -635,3 +635,71 @@ class TopicsViewAPITest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data["results"]), 1)
         self.assertEqual(response.data["results"][0]["name"], "Механика")
+
+
+class SubjectStatisticsViewAPITest(TestCase):
+    """Тесты для API статистики по предметам (SubjectStatisticsView)."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123",
+        )
+        self.subject = Subject.objects.create(name="Математика")
+        Topic.objects.create(name="Алгебра", subject=self.subject)
+        Topic.objects.create(name="Геометрия", subject=self.subject)
+        Task.objects.create(name="Тестовая задача", topic=self.subject.topics.first())
+        Task.objects.create(name="Тестовая задача", topic=self.subject.topics.first())
+    
+    def test_list_subjects_requires_authentication(self):
+        """Список предметов доступен только авторизованным."""
+        url = reverse("statistic_subject")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    
+    def test_list_subjects_authenticated_returns_200(self):
+        """Авторизованный пользователь получает статистику."""
+        self.client.force_authenticate(user=self.user)
+        url = reverse("statistic_subject")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+    
+        self.assertEqual(response.data[0]["name"], "Математика")
+        self.assertEqual(response.data[0]["tasks_total"], 2)
+        self.assertEqual(response.data[0]["tasks_solved"], 0)
+        self.assertEqual(response.data[0]["percentage"], 0.0)
+    
+    def update_solved_tasks_and_percentage(self):
+        """Обновление количества решенных задач и процента выполнения."""
+        self.user.solved_tasks.add(self.subject.tasks.first())
+        self.client.force_authenticate(user=self.user)
+        url = reverse("statistic_subject")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+    
+        self.assertEqual(response.data[0]["name"], "Математика")
+        self.assertEqual(response.data[0]["tasks_total"], 2)
+        self.assertEqual(response.data[0]["tasks_solved"], 1)
+        self.assertEqual(response.data[0]["percentage"], 50.0)
+    
+    def test_00_if_no_tasks(self):
+        Subject.objects.filter().delete()
+        Topic.objects.filter().delete()
+        Task.objects.filter().delete()
+
+        Subject.objects.create(name="123")
+
+        self.client.force_authenticate(user=self.user)
+        url = reverse("statistic_subject")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+    
+        self.assertEqual(response.data[0]["name"], "123")
+        self.assertEqual(response.data[0]["tasks_total"], 0)
+        self.assertEqual(response.data[0]["tasks_solved"], 0)
+        self.assertEqual(response.data[0]["percentage"], 0.0)
