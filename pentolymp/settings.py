@@ -153,7 +153,7 @@ DATABASES = {
         'PORT': env.str("DATABASE_PORT", '5432'),
     }
 }
-if env.bool('DB_IN_MEMORY'):
+if env.bool('DB_IN_MEMORY', False):
     DATABASES['default'] = {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': ':memory:',
