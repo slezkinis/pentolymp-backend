@@ -1,6 +1,5 @@
 Django==6.0.1
 djangorestframework==3.16.1
-python-dotenv
 drf-spectacular
 djangorestframework-simplejwt
 django-tinymce
@@ -13,3 +12,4 @@ websockets==12.0
 apscheduler
 django-apscheduler
 psycopg2-binary
+environs
