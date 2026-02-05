@@ -15,8 +15,6 @@ from pathlib import Path
 from datetime import timedelta
 from environs import Env
 
-from dotenv import load_dotenv
-
 env = Env()
 env.read_env()
 
