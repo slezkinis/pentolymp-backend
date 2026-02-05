@@ -25,6 +25,7 @@ jobs:
     - name: Add SECRET_KEY
       run: |
         echo "SECRET_KEY=1234567" >> .env
+        echo "DB_IN_MEMORY=True" >> .env
     - name: Run Tests
       run: |
         python manage.py test
