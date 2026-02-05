@@ -13,10 +13,12 @@ import os
 import sys
 from pathlib import Path
 from datetime import timedelta
+from environs import Env
 
 from dotenv import load_dotenv
 
-load_dotenv()
+env = Env()
+env.read_env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,15 +28,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = env.str("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool("DEBUG", True)
 
-ALLOWED_HOSTS = [
-    "127.0.0.1",
-    "localhost"
-]
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", [])
 
 # Application definition
 
@@ -73,7 +72,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True # TODO edit
+CORS_ALLOW_ALL_ORIGINS = env.bool("CORS_ALLOW_ALL_ORIGINS", False)
+
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", [])
 
 ROOT_URLCONF = "pentolymp.urls"
 
@@ -115,8 +116,8 @@ SPECTACULAR_SETTINGS = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ACCESS_TOKEN_LIFETIME': env.int("ACCESS_TOKEN_LIFETIME_MINUTE", 60),
+    'REFRESH_TOKEN_LIFETIME': env.int('REFRESH_TOKEN_LIFETIME_DAYS', 7),
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': False,
@@ -124,8 +125,8 @@ SIMPLE_JWT = {
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
     'VERIFYING_KEY': None,
-    'AUDIENCE': None,
-    'ISSUER': None,
+    'AUDIENCE': env.str("AUDIENCE", None),
+    'ISSUER': env.str("ISSUER", None),
     
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
@@ -147,14 +148,14 @@ AUTH_USER_MODEL = 'users.User'
 DATABASES = {
 'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'db',
-        'USER': 'user',
-        'PASSWORD': 'userpass',
-        'HOST': 'db',
-        'PORT': '5432',
+        'NAME': env.str("DATABASE_NAME", 'db'),
+        'USER': env.str("DATABASE_USER", 'user'),
+        'PASSWORD': env.str("DATABASE_PASSWORD", 'password'),
+        'HOST': env.str("DATABASE_HOST", 'host'),
+        'PORT': env.str("DATABASE_PORT", '5432'),
     }
 }
-if 'test' in sys.argv or 'pytest' in sys.argv:
+if env.bool('DB_IN_MEMORY'):
     DATABASES['default'] = {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': ':memory:',
