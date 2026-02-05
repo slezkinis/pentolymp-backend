@@ -72,7 +72,7 @@ MIDDLEWARE = [
 
 CORS_ALLOW_ALL_ORIGINS = False # TODO edit
 
-CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS").split(",")
+CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
 
 ROOT_URLCONF = "pentolymp.urls"
 
