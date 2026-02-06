@@ -19,7 +19,16 @@ from django.contrib import admin
 from django.urls import path, include
 
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from django_apscheduler.models import DjangoJob, DjangoJobExecution
 
+
+
+admin.site.site_header = "Админ-панель PentOlymp"  # Крупный заголовок
+admin.site.site_title = "Админка PentOlymp"                      # Заголовок вкладки браузера
+admin.site.index_title = "Добро пожаловать"
+
+admin.site.unregister(DjangoJob)
+admin.site.unregister(DjangoJobExecution)
 
 urlpatterns = [
     path('api/', include([
