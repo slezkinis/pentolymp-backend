@@ -23,8 +23,8 @@ from django_apscheduler.models import DjangoJob, DjangoJobExecution
 
 
 
-admin.site.site_header = "Админ-панель PentOlymp"  # Крупный заголовок
-admin.site.site_title = "Админка PentOlymp"                      # Заголовок вкладки браузера
+admin.site.site_header = "Админ-панель PentOlymp"
+admin.site.site_title = "Админка PentOlymp"
 admin.site.index_title = "Добро пожаловать"
 
 admin.site.unregister(DjangoJob)

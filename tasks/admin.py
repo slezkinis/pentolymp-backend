@@ -1,9 +1,12 @@
 import csv
+
 from django.contrib import admin
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from django.urls import path
 from django.contrib import messages
+from django.utils import timezone
+
 from .forms import CsvImportForm
 from .models import Task, Subject, Topic
 
@@ -19,6 +22,7 @@ class TaskAdmin(admin.ModelAdmin):
         urls = super().get_urls()
         custom_urls = [
             path('import-csv/', self.admin_site.admin_view(self.import_csv), name='tasks_task_import_csv'),
+            path('export-csv/', self.admin_site.admin_view(self.export_csv), name='tasks_task_export_csv'),
         ]
         return custom_urls + urls
     
@@ -80,9 +84,31 @@ class TaskAdmin(admin.ModelAdmin):
         }
         return render(request, 'admin/csv_import.html', context)
     
+    def export_csv(self, request):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="tasks" {timezone.now().strftime("%Y-%m-%d")}.csv'
+        
+        writer = csv.writer(response)
+        writer.writerow(['name', 'description', 'answer', 'subject', 'topic', 'difficulty_level', 'tip'])
+        
+        tasks = Task.objects.all()
+        for task in tasks:
+            writer.writerow([
+                task.name,
+                task.description,
+                task.answer,
+                task.topic.subject.name,
+                task.topic.name,
+                task.difficulty_level,
+                task.tip
+            ])
+        
+        return response
+
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
         extra_context['import_csv_url'] = 'import-csv/'
+        extra_context['export_csv_url'] = 'export-csv/'
         return super().changelist_view(request, extra_context)
 
 

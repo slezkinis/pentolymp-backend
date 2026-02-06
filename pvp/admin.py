@@ -50,7 +50,7 @@ class MatchAdmin(admin.ModelAdmin):
     
     def export_csv(self, request):
         response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = f'attachment; filename="matches_statistics.csv" {timezone.now().strftime("%Y-%m-%d")}.csv'
+        response['Content-Disposition'] = f'attachment; filename="matches_statistics" {timezone.now().strftime("%Y-%m-%d")}.csv'
         response.write('\ufeff')
         
         writer = csv.writer(response)
@@ -111,12 +111,3 @@ class PvpSettingsAdmin(admin.ModelAdmin):
             'fields': ('max_rating_diff_for_nodelay', 'min_wait_time')
         })
     )
-
-
-# @admin.register(Queue)
-# class QueueAdmin(admin.ModelAdmin):
-#     list_display = ['user', 'subject', 'created_at']
-#     list_filter = ['subject', 'created_at']
-#     search_fields = ['user__username', 'user__email', 'subject__name']
-#     readonly_fields = ['created_at']
-
