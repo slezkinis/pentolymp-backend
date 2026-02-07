@@ -71,7 +71,7 @@ class Rating(models.Model):
             self.matches_won += 1
         elif result == 'loss':
             self.matches_lost += 1
-        else:
+        elif result == 'draw':
             self.matches_drawn += 1
         
         self.save()
